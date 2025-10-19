@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sre-ci-cd-sa
+  namespace: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: dev
+  name: sre-ci-cd-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sre-ci-cd-rolebinding
+  namespace: dev
+subjects:
+- kind: ServiceAccount
+  name: sre-ci-cd-sa
+  namespace: dev
+roleRef:
+  kind: Role
+  name: sre-ci-cd-role
+  apiGroup: rbac.authorization.k8s.io

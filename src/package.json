@@ -1,0 +1,21 @@
+{
+  "name": "sre-ci-cd-sample",
+  "version": "1.0.0",
+  "description": "SRE CI/CD Assignment - Simple Node.js Web Application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "npm run test:unit",
+    "test:unit": "node test.js",
+    "build": "echo 'Build completed successfully'"
+  },
+  "keywords": ["sre", "ci-cd", "nodejs", "docker", "kubernetes"],
+  "author": "SRE Intern",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "assert": "^2.0.0"
+  }
+}
