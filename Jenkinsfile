@@ -1,6 +1,6 @@
 pipeline {
   agent any
-  
+
   parameters {
     string(name: 'IMAGE_REG', defaultValue: 'docker.io/mohanty2003', description: 'Docker registry')
     string(name: 'IMAGE_NAME', defaultValue: 'sre-ci-cd-sample', description: 'Image name')
@@ -10,7 +10,7 @@ pipeline {
 
   environment {
     DOCKER_CREDENTIALS = 'docker-registry-cred'
-    KUBECONFIG_CRED = 'kubeconfig-cred' // should be a File credential in Jenkins
+    KUBECONFIG_CRED = 'kubeconfig-cred' // Secret text in Jenkins
   }
 
   stages {
@@ -54,22 +54,22 @@ pipeline {
     }
 
     stage('Deploy to K8s') {
-  steps {
-    withCredentials([string(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_CONTENT')]) {
-      script {
-        // Write the secret text to a temporary file
-        sh '''
-          echo "$KUBECONFIG_CONTENT" > kubeconfig.tmp
-          export KUBECONFIG=$(pwd)/kubeconfig.tmp
-          kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
-          kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${IMAGE_REG}/${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
-          kubectl rollout status deployment/sre-ci-cd-deployment -n ${K8S_NAMESPACE}
-        '''
+      steps {
+        withCredentials([string(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_CONTENT')]) {
+          script {
+            sh '''
+              echo "$KUBECONFIG_CONTENT" > kubeconfig.tmp
+              export KUBECONFIG=$(pwd)/kubeconfig.tmp
+              kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
+              kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${IMAGE_REG}/${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
+              kubectl rollout status deployment/sre-ci-cd-deployment -n ${K8S_NAMESPACE}
+              rm -f kubeconfig.tmp
+            '''
+          }
+        }
       }
     }
   }
-}
-
 
   post {
     success {
