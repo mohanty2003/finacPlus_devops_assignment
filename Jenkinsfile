@@ -10,7 +10,7 @@ pipeline {
 
   environment {
     DOCKER_CREDENTIALS = 'docker-registry-cred'
-    KUBECONFIG_CRED = 'kubeconfig-cred' // Secret text in Jenkins
+    KUBECONFIG_CRED = 'kubeconfig-cred' // File credential in Jenkins
   }
 
   stages {
@@ -55,15 +55,14 @@ pipeline {
 
     stage('Deploy to K8s') {
       steps {
-        withCredentials([string(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_CONTENT')]) {
+        // Use file credential instead of string
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG')]) {
           script {
             sh '''
-              echo "$KUBECONFIG_CONTENT" > kubeconfig.tmp
-              export KUBECONFIG=$(pwd)/kubeconfig.tmp
+              # KUBECONFIG automatically points to the file Jenkins provides
               kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
               kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${IMAGE_REG}/${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
               kubectl rollout status deployment/sre-ci-cd-deployment -n ${K8S_NAMESPACE}
-              rm -f kubeconfig.tmp
             '''
           }
         }
