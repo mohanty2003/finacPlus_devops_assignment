@@ -54,22 +54,22 @@ pipeline {
     }
 
     stage('Deploy to K8s') {
-      steps {
-        // Using File Credential for kubeconfig
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-          script {
-            def imageName = "${params.IMAGE_REG}/${params.IMAGE_NAME}:${params.IMAGE_TAG}"
-            sh """
-              export KUBECONFIG=${KUBECONFIG_FILE}
-              kubectl apply -f k8s/ -n ${params.K8S_NAMESPACE}
-              kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${imageName} -n ${params.K8S_NAMESPACE}
-              kubectl rollout status deployment/sre-ci-cd-deployment -n ${params.K8S_NAMESPACE}
-            """
-          }
-        }
+  steps {
+    withCredentials([string(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_CONTENT')]) {
+      script {
+        // Write the secret text to a temporary file
+        sh '''
+          echo "$KUBECONFIG_CONTENT" > kubeconfig.tmp
+          export KUBECONFIG=$(pwd)/kubeconfig.tmp
+          kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
+          kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${IMAGE_REG}/${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
+          kubectl rollout status deployment/sre-ci-cd-deployment -n ${K8S_NAMESPACE}
+        '''
       }
     }
   }
+}
+
 
   post {
     success {
