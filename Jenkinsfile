@@ -2,21 +2,21 @@ pipeline {
   agent any
   
   parameters {
-    string(name: 'IMAGE_REG', defaultValue: 'docker.io/mohanty2003', description: 'docker registry')
-    string(name: 'IMAGE_NAME', defaultValue: 'sre-ci-cd-sample', description: 'image name')
-    string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'image tag')
-    string(name: 'K8S_NAMESPACE', defaultValue: 'dev', description: 'k8s namespace')
+    string(name: 'IMAGE_REG', defaultValue: 'docker.io/mohanty2003', description: 'Docker registry')
+    string(name: 'IMAGE_NAME', defaultValue: 'sre-ci-cd-sample', description: 'Image name')
+    string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Image tag')
+    string(name: 'K8S_NAMESPACE', defaultValue: 'dev', description: 'K8s namespace')
   }
 
   environment {
     DOCKER_CREDENTIALS = 'docker-registry-cred'
-    KUBECONFIG_CRED = 'kubeconfig-cred'
+    KUBECONFIG_CRED = 'kubeconfig-cred' // should be a File credential in Jenkins
   }
 
   stages {
     stage('Checkout') {
       steps {
-        echo "checking out code..."
+        echo "Checking out code..."
         checkout scm
       }
     }
@@ -44,8 +44,10 @@ pipeline {
         script {
           def imageName = "${params.IMAGE_REG}/${params.IMAGE_NAME}:${params.IMAGE_TAG}"
           withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-            sh "docker push ${imageName}"
+            sh """
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+              docker push ${imageName}
+            """
           }
         }
       }
@@ -53,12 +55,16 @@ pipeline {
 
     stage('Deploy to K8s') {
       steps {
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG')]) {
+        // Using File Credential for kubeconfig
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
           script {
             def imageName = "${params.IMAGE_REG}/${params.IMAGE_NAME}:${params.IMAGE_TAG}"
-            sh "kubectl apply -f k8s/"
-            sh "kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${imageName} -n ${params.K8S_NAMESPACE}"
-            sh "kubectl rollout status deployment/sre-ci-cd-deployment -n ${params.K8S_NAMESPACE}"
+            sh """
+              export KUBECONFIG=${KUBECONFIG_FILE}
+              kubectl apply -f k8s/ -n ${params.K8S_NAMESPACE}
+              kubectl set image deployment/sre-ci-cd-deployment sre-ci-cd-container=${imageName} -n ${params.K8S_NAMESPACE}
+              kubectl rollout status deployment/sre-ci-cd-deployment -n ${params.K8S_NAMESPACE}
+            """
           }
         }
       }
